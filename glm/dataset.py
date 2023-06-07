@@ -10,36 +10,34 @@ print_rank_0 = print
 
 
 class PromptDataset(Dataset):
-    def __init__(self, prompt_loader, text_loader, tokenizer: PretrainedCSP = None, to_tokenize=False):
-        self.prompts = prompt_loader
-        self.texts = text_loader
+    def __init__(self, filename: str, tokenizer: PretrainedCSP = None, to_tokenize=False):
         self.tokenizer = tokenizer
         self.to_tokenize = to_tokenize
-        if isinstance(self.prompts, LazyLoader) and isinstance(self.texts, LazyLoader):
-            self.prompt_lens = self.prompts.lens
-            self.text_lens = self.texts.lens
-            self.is_lazy = True
+        self.prompt_list = []
+        self.text_list = []
+        self.prompt_length_list = []
+        self.text_length_list = []
 
     def get_text_len(self, idx):
-        return self.prompt_lens[idx] + self.text_lens[idx]
+        return self.prompt_length_list[idx] + self.text_length_list[idx]
 
     def __getitem__(self, index):
-        prompt = self.prompts[index]
-        text = self.texts[index]
+        prompt = self.prompt_list[index]
+        text = self.text_list[index]
         if self.to_tokenize:
             prompt = self.tokenizer.EncodeAsIds(prompt).tokenization
             text = self.tokenizer.EncodeAsIds(text).tokenization
         return {"tokens": prompt + text, "loss_masks": [0] * len(prompt) + [1] * len(text)}
 
     def __len__(self):
-        return len(self.prompts)
+        return len(self.prompt_list)
 
 
 class BlockDataset(Dataset):
     def __init__(self, dataset: PromptDataset, tokenizer: PretrainedCSP,
                  max_seq_len=1024,
                  sample_across_doc=True,
-                 non_sentence_start=0.0, filter_english=False):
+                 non_sentence_start_prob=0.0, filter_english=False):
         """
         sentence_start: the stripped article must start with a complete sentence
         """
@@ -49,7 +47,7 @@ class BlockDataset(Dataset):
         self.max_seq_len = max_seq_len
         self.tokenizer = tokenizer
         self.sample_across_doc = sample_across_doc
-        self.non_sentence_start = non_sentence_start
+        self.non_sentence_start_prob = non_sentence_start_prob
         self.filter_english = filter_english
         self.weighting, self.total_len = None, None
         self.is_lazy = False
@@ -68,7 +66,7 @@ class BlockDataset(Dataset):
             lens = np.array([len(d['text']) if isinstance(d, dict) else len(d) for d in self.ds])
         self.total_len = np.sum(lens)
         print_rank_0(f"Dataset document count {len(lens)}, token count {self.total_len}, "
-                     f"non sentence start {self.non_sentence_start}")
+                     f"non sentence start {self.non_sentence_start_prob}")
         self.weighting = list(accumulate(lens))
 
     def get_weighted_samples(self, np_rng):
@@ -103,7 +101,7 @@ class BlockDataset(Dataset):
         if tokens_to_strip > 0:
             move_count = 0
             strip_left_tokens = rng.randint(tokens_to_strip)
-            if rng.random() > self.non_sentence_start:
+            if rng.random() > self.non_sentence_start_prob:
                 if rng.random() < 0.5:
                     while move_count < self.max_seq_len // 2 and strip_left_tokens > 0 and not self.contains_sentence_end(
                             tokens[strip_left_tokens - 1]):

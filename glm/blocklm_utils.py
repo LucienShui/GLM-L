@@ -28,12 +28,12 @@ def index_in_list(lst, val, start=None):
 
 
 class ConstructBlockStrategy:
-    def __init__(self, args, tokenizer, max_seq_length, bert_prob=1.0, gap_sentence_prob=0.0, gpt_infill_prob=0.5,
+    def __init__(self, tokenizer, max_seq_length, eod_token, bert_prob=1.0, gap_sentence_prob=0.0, gpt_infill_prob=0.5,
                  gpt_min_ratio=0.5, bert_ratio=0.15, gap_sentence_ratio=0.15, average_block_length=3,
                  max_block_length=40, block_mask_prob=0.0, context_mask_ratio=0.0, context_mask_range=3,
                  short_seq_prob=0.0, single_span_prob=0.0, block_position_encoding=True, encoder_decoder=False,
                  shuffle_blocks=True, sentinel_token=False, task_mask=False, random_position=False, masked_lm=False):
-        self.eod_token = args.eod_token
+        self.eod_token = eod_token
         self.tokenizer = tokenizer
         self.count = 0
         self.max_seq_length = max_seq_length
