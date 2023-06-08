@@ -2,12 +2,10 @@ from multiprocessing import cpu_count
 from typing import Any, Union, Dict, List, Tuple
 
 import lightning.pytorch as pl
-import pandas as pd
 from .dataloader import get_dataloader
 import torch
 from torch.utils.data.dataloader import DataLoader
 from transformers import PreTrainedTokenizer, PreTrainedModel
-from transformers.modeling_outputs import SequenceClassifierOutput
 from typing import Dict
 from .config import Config
 
@@ -18,6 +16,8 @@ class Model(pl.LightningModule):
         self.tokenizer = PreTrainedTokenizer.from_pretrained(config.pretrained)
         self.model = PreTrainedModel.from_pretrained(config.pretrained)
         self.config = config
+
+        self.criterion = torch.nn.CrossEntropyLoss()
 
         self.cpu_count: int = cpu_count()
 
