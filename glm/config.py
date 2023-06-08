@@ -4,8 +4,8 @@ from typing import List
 class Config:
     def __init__(self):
         self.eod_token = None
-        self.sample_across_doc: bool = None
-        self.non_sentence_start_prob: float = None
+        self.sample_across_doc: bool = False
+        self.non_sentence_start_prob: float = 0.0
         self.max_sequence_length: int = 2048
         self.pretrained: str = ''
         self.dataset_list: List[str] = []

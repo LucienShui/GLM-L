@@ -26,7 +26,8 @@ class Model(pl.LightningModule):
     def training_step(self, batch: List[torch.Tensor], batch_idx: int) -> Union[torch.Tensor, Dict[str, Any]]:
         input_ids, labels, loss_mask, attention_mask, position_ids = batch
         logits: torch.Tensor = self.forward(input_ids, position_ids, attention_mask)
-        loss: torch.Tensor = self.criterion(logits, labels)
+        labels_one_hot: torch.Tensor = torch.nn.functional.one_hot(labels, logits.size(2))
+        loss: torch.Tensor = self.criterion(logits, labels_one_hot.float())
         return {"loss": loss, "logits": logits}
 
     def validation_step(self, batch: List[torch.Tensor], batch_idx: int) -> Union[torch.Tensor, Dict[str, Any]]:
@@ -41,7 +42,7 @@ class Model(pl.LightningModule):
                 attention_mask: torch.Tensor, memory: List[torch.Tensor] = None) -> torch.Tensor:
         memory = memory or []
         model_output = self.model(input_ids, position_ids, attention_mask, memory)
-        logits, memory = model_output.logits, model_output.memory
+        logits, memory = model_output.logits, model_output.mems
         return logits
 
     def configure_optimizers(self) -> Any:

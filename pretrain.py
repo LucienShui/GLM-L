@@ -27,7 +27,11 @@ def main():
     config = Config().from_dict({
         'pretrained': 'glm-large-chinese',
         'dataset_list': ['test.jsonl'],
-        'batch_size': 2
+        'batch_size': 1,
+        'num_workers': 0,
+        'block_lm': True,
+        'max_sequence_length': 128,
+        'max_position_embeddings': 128
     })
     model = Model(config)
     output_dir = datetime.now().strftime('%Y%m%d%H%M%S')
