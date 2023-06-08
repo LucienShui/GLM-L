@@ -24,9 +24,11 @@ def main():
     random.seed(seed)
     seed_everything(seed)
 
-    # pretrained = './albert_chinese_tiny'
-    # train_df, valid_df, test_df = train.split_dataset(dataset_df)
-    config = Config()
+    config = Config().from_dict({
+        'pretrained': 'glm-large-chinese',
+        'dataset_list': ['test.jsonl'],
+        'batch_size': 2
+    })
     model = Model(config)
     output_dir = datetime.now().strftime('%Y%m%d%H%M%S')
 
@@ -41,7 +43,7 @@ def main():
 
     early_stopping_callback = EarlyStopping(monitor="valid_mean_loss", mode="min", patience=2, verbose=False)
 
-    metrics_callback = MetricsCallback()
+    # metrics_callback = MetricsCallback()
 
     trainer = pl.Trainer(
         max_epochs=8,
@@ -50,15 +52,19 @@ def main():
         default_root_dir=output_dir,
         accelerator='auto',
         num_sanity_val_steps=-1,
-        callbacks=[metrics_callback, checkpoint_callback, early_stopping_callback]
+        callbacks=[checkpoint_callback, early_stopping_callback]
     )
     trainer.fit(model=model)
     trainer.test(ckpt_path='best')
 
-    metrics_callback.plot('mean_loss')
+    # metrics_callback.plot('mean_loss')
 
     best_state_dict = torch.load(checkpoint_callback.best_model_path)['state_dict']
     model.load_state_dict(best_state_dict)
 
     model.model.save_pretrained(os.path.join(output_dir, 'saved_model'))
     model.tokenizer.save_pretrained(os.path.join(output_dir, 'saved_model'))
+
+
+if __name__ == '__main__':
+    main()

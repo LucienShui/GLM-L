@@ -2,12 +2,13 @@ import torch
 from .sampler import RandomSampler, DistributedBatchSampler
 from .blocklm_utils import ConstructBlockStrategy
 from torch.utils.data import DataLoader
-from .dataset import BlockDataset, PromptDataset
-from .tokenizer import PretrainedChineseSPTokenizer as PretrainedCSP
+from .dataset import BlockDataset, PromptDataset, ConcatDataset
 from .config import Config
+from transformers import PreTrainedTokenizer
 
 
-def make_data_loader(dataset: BlockDataset, tokenizer: PretrainedCSP, config: Config, world_size: int, rank: int):
+def make_dataloader(dataset: BlockDataset, tokenizer: PreTrainedTokenizer, config: Config, world_size: int,
+                    rank: int):
     if config.loader_scatter is not None and config.loader_scatter > 0:
         rank = rank // config.loader_scatter
         world_size = world_size // config.loader_scatter
@@ -33,7 +34,7 @@ def make_data_loader(dataset: BlockDataset, tokenizer: PretrainedCSP, config: Co
                                                       batch_size,
                                                       drop_last)
     collate_fn = None
-    if config.block_collate:
+    if config.block_lm or config.encoder_decoder:
         construct_blocks_fn = ConstructBlockStrategy(tokenizer, config.seq_length, config.eod_token,
                                                      bert_prob=config.bert_prob,
                                                      gap_sentence_prob=config.gap_sentence_prob,
@@ -55,12 +56,12 @@ def make_data_loader(dataset: BlockDataset, tokenizer: PretrainedCSP, config: Co
         def collate_fn(samples):
             tokens, labels, loss_mask, attention_mask, position_ids = get_batch(construct_blocks_fn(samples), config)
             return tokens, labels, loss_mask, attention_mask, position_ids
-    data_loader = DataLoader(dataset,
-                             batch_sampler=batch_sampler,
-                             num_workers=config.num_workers,
-                             pin_memory=True,
-                             collate_fn=collate_fn)
-    return data_loader
+    dataloader = DataLoader(dataset,
+                            batch_sampler=batch_sampler,
+                            num_workers=config.num_workers,
+                            pin_memory=True,
+                            collate_fn=collate_fn)
+    return dataloader
 
 
 def get_batch(data, config: Config):
@@ -189,10 +190,9 @@ def get_masks_and_position_ids(data,
     return attention_mask, loss_mask, position_ids
 
 
-def get_dataloader(tokenizer: PretrainedCSP, config: Config, rank: int,
-                   world_size: int) -> DataLoader:
-    prompt_dataset = PromptDataset(config.dataset_list[0], tokenizer)
+def get_dataloader(tokenizer: PreTrainedTokenizer, config: Config, world_size: int, rank: int) -> DataLoader:
+    dataset = ConcatDataset([PromptDataset(each, tokenizer) for each in config.dataset_list])
     block_dataset: BlockDataset = BlockDataset(
-        prompt_dataset, tokenizer, max_seq_len=config.max_sequence_length,
+        dataset, tokenizer, max_seq_len=config.max_sequence_length,
         sample_across_doc=config.sample_across_doc, non_sentence_start_prob=config.non_sentence_start_prob)
-    return make_data_loader(block_dataset, tokenizer, config, world_size, rank)
+    return make_dataloader(block_dataset, tokenizer, config, world_size, rank)

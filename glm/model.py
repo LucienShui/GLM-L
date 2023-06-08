@@ -5,7 +5,7 @@ import lightning.pytorch as pl
 from .dataloader import get_dataloader
 import torch
 from torch.utils.data.dataloader import DataLoader
-from transformers import PreTrainedTokenizer, PreTrainedModel
+from transformers import AutoModel, AutoTokenizer
 from typing import Dict
 from .config import Config
 
@@ -13,8 +13,8 @@ from .config import Config
 class Model(pl.LightningModule):
     def __init__(self, config: Config):
         super().__init__()
-        self.tokenizer = PreTrainedTokenizer.from_pretrained(config.pretrained)
-        self.model = PreTrainedModel.from_pretrained(config.pretrained)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.pretrained, trust_remote_code=True)
+        self.model = AutoModel.from_pretrained(config.pretrained, trust_remote_code=True)
         self.config = config
 
         self.criterion = torch.nn.CrossEntropyLoss()
@@ -26,7 +26,7 @@ class Model(pl.LightningModule):
     def training_step(self, batch: List[torch.Tensor], batch_idx: int) -> Union[torch.Tensor, Dict[str, Any]]:
         input_ids, labels, loss_mask, attention_mask, position_ids = batch
         logits: torch.Tensor = self.forward(input_ids, position_ids, attention_mask)
-        loss: torch.Tensor = self.criterion(logits, y)
+        loss: torch.Tensor = self.criterion(logits, labels)
         return {"loss": loss, "logits": logits}
 
     def validation_step(self, batch: List[torch.Tensor], batch_idx: int) -> Union[torch.Tensor, Dict[str, Any]]:
@@ -45,7 +45,7 @@ class Model(pl.LightningModule):
         return logits
 
     def configure_optimizers(self) -> Any:
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.lr)
         return optimizer
 
     def train_dataloader(self) -> DataLoader:
