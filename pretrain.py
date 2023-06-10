@@ -1,9 +1,7 @@
 import os
-import random
 from datetime import datetime
 
 import lightning.pytorch as pl
-import numpy as np
 import torch
 from lightning import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
@@ -13,16 +11,7 @@ from glm.config import Config
 
 
 def main():
-    seed = 10086
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)  # 为当前GPU设置随机种子
-        torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU，为所有GPU设置随机种子
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    seed_everything(seed)
+    seed_everything(10086)
 
     config = Config().from_dict({
         'pretrained': 'glm-large-chinese',
