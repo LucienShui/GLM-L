@@ -1,13 +1,13 @@
 from multiprocessing import cpu_count
-from typing import Any, Union, Dict, List, Tuple
+from typing import Any, Union, List, Dict
 
 import lightning.pytorch as pl
-from .dataloader import get_dataloader
 import torch
 from torch.utils.data.dataloader import DataLoader
 from transformers import AutoModel, AutoTokenizer
-from typing import Dict
+
 from .config import Config
+from .dataloader import get_dataloader
 
 
 class Model(pl.LightningModule):
