@@ -8,6 +8,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
 
 from glm.model import Model
 from glm.config import Config
+from glm.callback import MetricsCallback
 
 
 def main():
@@ -34,9 +35,9 @@ def main():
         mode="min",
     )
 
-    early_stopping_callback = EarlyStopping(monitor="valid_mean_loss", mode="min", patience=2, verbose=False)
+    early_stopping_callback = EarlyStopping(monitor="valid_mean_loss", mode="min", patience=3, verbose=False)
 
-    # metrics_callback = MetricsCallback()
+    metrics_callback = MetricsCallback()
 
     trainer = pl.Trainer(
         max_epochs=8,
@@ -45,10 +46,10 @@ def main():
         default_root_dir=output_dir,
         accelerator='auto',
         num_sanity_val_steps=-1,
-        callbacks=[checkpoint_callback, early_stopping_callback]
+        callbacks=[checkpoint_callback, early_stopping_callback, metrics_callback]
     )
     trainer.fit(model=model)
-    trainer.test(ckpt_path='best')
+    # trainer.test(ckpt_path='best')
 
     # metrics_callback.plot('mean_loss')
 

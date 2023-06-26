@@ -39,31 +39,18 @@ class MetricsCallback(Callback):
 
     def on_epoch_end(self, pl_module: pl.LightningModule, dataset_type: str) -> None:
         mean_loss: float = self.mean_loss(dataset_type + '_loss').item()
-        logits: np.ndarray = self.merge_tensor(dataset_type + '_logits')
-        y: np.ndarray = self.merge_tensor(dataset_type + '_label')
-
-        accuracy, auc, metrics_df, confusion_df = calc_metrics(logits, y, 2)
+        # logits: np.ndarray = self.merge_tensor(dataset_type + '_logits')
+        # y: np.ndarray = self.merge_tensor(dataset_type + '_label')
 
         # print metrics to stdout
-        delimiter = '=' * 64
-        with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
-            print('', delimiter, str(metrics_df), delimiter, str(confusion_df), delimiter,
-                  f'epoch = {pl_module.current_epoch}',
-                  f'{dataset_type}_mean_loss = {mean_loss}',
-                  f'{dataset_type}_accuracy = {accuracy}',
-                  f'{dataset_type}_auc = {auc}', delimiter, sep='\n')
         pl_module.log_dict({
             dataset_type + '_mean_loss': mean_loss,
-            dataset_type + '_accuracy': accuracy,
-            dataset_type + '_auc': auc
         }, prog_bar=True, logger=True, sync_dist=True)
 
         # 如果是 num_sanity_val_steps 阶段，则 epoch 为 0
         self.metric.setdefault(dataset_type, {}).setdefault('x', []).append(
             self.epoch_cnt - (pl_module.global_step == 0))
         self.metric.setdefault(dataset_type, {}).setdefault('mean_loss', []).append(mean_loss)
-        self.metric.setdefault(dataset_type, {}).setdefault('accuracy', []).append(accuracy)
-        self.metric.setdefault(dataset_type, {}).setdefault('auc', []).append(auc)
 
         for key in ['_loss', '_logits', '_label']:
             self.cache[dataset_type + key] = []
@@ -112,15 +99,3 @@ class MetricsCallback(Callback):
 
     def on_test_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
         self.on_epoch_end(pl_module, 'test')
-
-    def plot(self, field: str) -> None:
-        import matplotlib.pyplot as plt
-        plt.title(field)
-        plt.xlabel('epoch')
-
-        plt.xticks(range(len(set(self.metric['train']['x'] + self.metric['valid']['x']))))
-        plt.plot(self.metric['train']['x'], self.metric['train'][field])
-        plt.plot(self.metric['valid']['x'], self.metric['valid'][field])
-        plt.legend(['train', 'valid'])
-
-        plt.show()
